@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: similar-products
+
+product-api:
+  base-url: http://localhost:3001
+  timeout-per-call: 2s
+  timeout-global: 5s
+
+resilience4j:
+  timelimiter:
+    instances:
+      productApi:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
+  circuitbreaker:
+    instances:
+      productApi:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+  retry:
+    instances:
+      productApi:
+        maxAttempts: 2
+        waitDuration: 100ms
+        retryExceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException$InternalServerError
+          - java.util.concurrent.TimeoutException
+
+cache:
+  enabled: true
+  ttl: 60s
+  max-size: 100
