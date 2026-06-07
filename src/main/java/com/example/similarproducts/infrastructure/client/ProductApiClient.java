@@ -3,12 +3,14 @@ package com.example.similarproducts.infrastructure.client;
 import com.example.similarproducts.domain.model.ProductDetail;
 import com.example.similarproducts.domain.port.out.ProductPort;
 import com.github.benmanes.caffeine.cache.Cache;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.List;
 
+@Slf4j
 public class ProductApiClient implements ProductPort {
 
     private final WebClient webClient;
@@ -23,19 +25,29 @@ public class ProductApiClient implements ProductPort {
 
     @Override
     public Mono<List<String>> getSimilarIds(String productId) {
+        log.info("Consultando similares para producto {}", productId);
         return webClient.get()
                 .uri("/product/{productId}/similarids", productId)
                 .retrieve()
                 .bodyToMono(new org.springframework.core.ParameterizedTypeReference<List<String>>() {})
-                .timeout(timeoutPerCall);
+                .timeout(timeoutPerCall)
+                .doOnSuccess(ids -> {
+                    if (ids != null) {
+                        log.info("Similares de {}: {} IDs encontrados", productId, ids.size());
+                    }
+                })
+                .doOnError(e -> log.warn("Error consultando similares de {}: {}", 
+                        productId, e.getMessage()));
     }
 
     @Override
     public Mono<ProductDetail> getProduct(String productId) {
         ProductDetail cached = cache.getIfPresent(productId);
         if (cached != null) {
+            log.debug("Cache HIT para producto {}", productId);
             return Mono.just(cached);
         }
+        log.debug("Cache MISS para producto {}", productId);
 
         return webClient.get()
                 .uri("/product/{productId}", productId)
@@ -49,7 +61,10 @@ public class ProductApiClient implements ProductPort {
                 .doOnSuccess(product -> {
                     if (product != null) {
                         cache.put(productId, product);
+                        log.debug("Producto {} cacheado", productId);
                     }
-                });
+                })
+                .doOnError(e -> log.warn("Error consultando producto {}: {}", 
+                        productId, e.getMessage()));
     }
 }

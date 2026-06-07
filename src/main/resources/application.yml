@@ -44,3 +44,12 @@ resilience4j:
         retryExceptions:
           - org.springframework.web.reactive.function.client.WebClientResponseException$InternalServerError
           - java.util.concurrent.TimeoutException
+
+logging:
+  level:
+    com.example.similarproducts: INFO
+    io.github.resilience4j: WARN
+    org.springframework.web.reactive.function.client: WARN
+    org.apache.catalina: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSS'Z'} %-5level [%thread] %logger{36} - %msg%n"

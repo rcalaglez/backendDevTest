@@ -5,13 +5,16 @@ import com.example.similarproducts.domain.port.in.GetSimilarProductsUseCase;
 import com.example.similarproducts.domain.port.out.ProductPort;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
+@Slf4j
 public class GetSimilarProductsService implements GetSimilarProductsUseCase {
 
     private static final String PRODUCT_API = "productApi";
@@ -37,12 +40,21 @@ public class GetSimilarProductsService implements GetSimilarProductsUseCase {
         return productPort.getSimilarIds(productId)
                 .flatMapMany(Flux::fromIterable)
                 .flatMap(id -> productPort.getProduct(id)
-                        .onErrorResume(e -> Mono.empty()), MAX_CONCURRENCY)
+                        .onErrorResume(e -> {
+                            log.debug("Omitiendo producto {}: {}", id, e.getMessage());
+                            return Mono.empty();
+                        }), MAX_CONCURRENCY)
                 .collectList()
-                .timeout(globalTimeout);
+                .timeout(globalTimeout)
+                .onErrorResume(TimeoutException.class, e -> {
+                    log.warn("Timeout global para producto {} después de {}", 
+                            productId, globalTimeout);
+                    return Mono.just(Collections.emptyList());
+                });
     }
 
     public Mono<List<ProductDetail>> fallback(String productId, Throwable throwable) {
+        log.warn("Fallback para producto {}: {}", productId, throwable.getMessage());
         return Mono.just(Collections.emptyList());
     }
 }
