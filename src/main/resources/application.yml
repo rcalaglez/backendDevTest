@@ -10,6 +10,11 @@ product-api:
   timeout-per-call: 2s
   timeout-global: 5s
 
+cache:
+  enabled: true
+  ttl: 60s
+  max-size: 100
+
 resilience4j:
   timelimiter:
     instances:
@@ -23,16 +28,19 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 10s
         permittedNumberOfCallsInHalfOpenState: 3
+  ratelimiter:
+    instances:
+      productApi:
+        limitForPeriod: 800
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
   retry:
     instances:
       productApi:
-        maxAttempts: 2
+        maxAttempts: 3
         waitDuration: 100ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
         retryExceptions:
           - org.springframework.web.reactive.function.client.WebClientResponseException$InternalServerError
           - java.util.concurrent.TimeoutException
-
-cache:
-  enabled: true
-  ttl: 60s
-  max-size: 100

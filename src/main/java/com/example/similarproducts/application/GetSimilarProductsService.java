@@ -4,6 +4,7 @@ import com.example.similarproducts.domain.model.ProductDetail;
 import com.example.similarproducts.domain.port.in.GetSimilarProductsUseCase;
 import com.example.similarproducts.domain.port.out.ProductPort;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -30,6 +31,7 @@ public class GetSimilarProductsService implements GetSimilarProductsUseCase {
     }
 
     @Override
+    @RateLimiter(name = PRODUCT_API)
     @CircuitBreaker(name = PRODUCT_API, fallbackMethod = "fallback")
     public Mono<List<ProductDetail>> execute(String productId) {
         return productPort.getSimilarIds(productId)
